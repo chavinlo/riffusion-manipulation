@@ -22,13 +22,11 @@ def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_imag
     audio = audio.set_frame_rate(44100)
 
     length_in_ms = len(audio)
-
+    print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
     # Extract first 5 seconds of audio data
-    
-    
-    audio = audio[:60000]
+    audio = audio[:5119]
     length_in_ms = len(audio)
-    print("AUDIO LENGTH IN MS:", length_in_ms)
+    print("CROPPED AUDIO LENGTH IN MS:", length_in_ms)
 
     # Convert to WAV and save as BytesIO object
     wav_bytes = io.BytesIO()
@@ -50,7 +48,7 @@ def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, po
     clip_duration_ms = ms_duration  # [ms]
 
     bins_per_image = 512
-    n_mels = 1024
+    n_mels = 512
     mel_scale = True
 
     # FFT parameters

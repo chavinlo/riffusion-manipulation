@@ -93,7 +93,7 @@ def wav_bytes_from_spectrogram_image(image: Image.Image, nmels: int) -> T.Tuple[
     Sxx = spectrogram_from_image(image, max_volume=max_volume, power_for_image=power_for_image)
 
     sample_rate = 44100  # [Hz]
-    clip_duration_ms = 120000  # [ms]
+    clip_duration_ms = 5119  # [ms]
 
     bins_per_image = 512
     n_mels = nmels
@@ -143,7 +143,7 @@ def write_bytesio_to_file(filename, bytesio):
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", help="the file to process")
 parser.add_argument("-o", help="the file to process")
-parser.add_argument("--nmels", help="the file to process")
+parser.add_argument("--nmels", default=512, help="the file to process")
 args = parser.parse_args()
 
 # The filename is stored in the `filename` attribute of the `args` object
