@@ -9,35 +9,15 @@ import torch
 import torchaudio
 import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input", help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
+parser.add_argument("-o", "--output", help="Output Image")
+parser.add_argument("-m", "--maxvol", default=100, help="Max Volume, 255 for identical results")
+parser.add_argument("-p", "--powerforimage", default=0.25, help="Power for Image")
+parser.add_argument("-n", "--nmels", default=512, help="n_mels to use for Image, basically width. Higher = more fidelity")
+args = parser.parse_args()
 
-def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_image: float = 0.25) -> Image.Image:
-    """
-    Generate a spectrogram image from an MP3 file.
-    """
-    # Load MP3 file into AudioSegment object
-    audio = pydub.AudioSegment.from_file(filename)
-
-    # Convert to mono and set frame rate
-    audio = audio.set_channels(1)
-    audio = audio.set_frame_rate(44100)
-
-    length_in_ms = len(audio)
-    print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
-    # Extract first 5 seconds of audio data
-    audio = audio[:5119]
-    length_in_ms = len(audio)
-    print("CROPPED AUDIO LENGTH IN MS:", length_in_ms)
-
-    # Convert to WAV and save as BytesIO object
-    wav_bytes = io.BytesIO()
-    audio.export("clip.wav", format="wav")
-    audio.export(wav_bytes, format="wav")
-    wav_bytes.seek(0)
-
-    # Generate spectrogram image from WAV file
-    return spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image, ms_duration=length_in_ms)
-
-def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, power_for_image: float = 0.25, ms_duration: int = 5000) -> Image.Image:
+def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, power_for_image: float = 0.25, ms_duration: int = 5119) -> Image.Image:
     """
     Generate a spectrogram image from a WAV file.
     """
@@ -48,7 +28,7 @@ def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, po
     clip_duration_ms = ms_duration  # [ms]
 
     bins_per_image = 512
-    n_mels = 512
+    n_mels = int(args.nmels)
     mel_scale = True
 
     # FFT parameters
@@ -130,13 +110,39 @@ def image_from_spectrogram(
     image = Image.fromarray(data.astype(np.uint8))
     return image
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-f", help="the file to process")
-parser.add_argument("-o", help="the file to process")
-args = parser.parse_args()
+def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_image: float = 0.25) -> Image.Image:
+    """
+    Generate a spectrogram image from an MP3 file.
+    """
+
+    max_volume = int(args.maxvol)
+    power_for_image = float(args.powerforimage)
+
+    # Load MP3 file into AudioSegment object
+    audio = pydub.AudioSegment.from_file(filename)
+
+    # Convert to mono and set frame rate
+    audio = audio.set_channels(1)
+    audio = audio.set_frame_rate(44100)
+
+    length_in_ms = len(audio)
+    print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
+    # Extract first 5 seconds of audio data
+    audio = audio[:5119]
+    length_in_ms = len(audio)
+    print("CROPPED AUDIO LENGTH IN MS:", length_in_ms)
+
+    # Convert to WAV and save as BytesIO object
+    wav_bytes = io.BytesIO()
+    audio.export("clip.wav", format="wav")
+    audio.export(wav_bytes, format="wav")
+    wav_bytes.seek(0)
+
+    # Generate spectrogram image from WAV file
+    return spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image, ms_duration=length_in_ms)
 
 # The filename is stored in the `filename` attribute of the `args` object
-filename = args.f
-image = spectrogram_image_from_file(filename, max_volume=100)
+filename = args.input
+image = spectrogram_image_from_file(filename)
 
-image.save(args.o)
+image.save(args.output)

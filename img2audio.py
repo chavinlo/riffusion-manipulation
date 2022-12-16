@@ -83,17 +83,17 @@ def waveform_from_spectrogram(
 
     return waveform
 
-def wav_bytes_from_spectrogram_image(image: Image.Image, nmels: int) -> T.Tuple[io.BytesIO, float]:
+def wav_bytes_from_spectrogram_image(image: Image.Image, duration: int, nmels: int, maxvol: int, power_for_image: float) -> T.Tuple[io.BytesIO, float]:
     """
     Reconstruct a WAV audio clip from a spectrogram image. Also returns the duration in seconds.
     """
 
-    max_volume = 50
-    power_for_image = 0.25
+    max_volume = maxvol
+    # power_for_image = 0.25
     Sxx = spectrogram_from_image(image, max_volume=max_volume, power_for_image=power_for_image)
 
     sample_rate = 44100  # [Hz]
-    clip_duration_ms = 5119  # [ms]
+    clip_duration_ms = duration  # [ms]
 
     bins_per_image = 512
     n_mels = nmels
@@ -141,13 +141,16 @@ def write_bytesio_to_file(filename, bytesio):
         outfile.write(bytesio.getbuffer())
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", help="the file to process")
-parser.add_argument("-o", help="the file to process")
-parser.add_argument("--nmels", default=512, help="the file to process")
+parser.add_argument("-i", "--input", help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
+parser.add_argument("-o", "--output", help="Output Image")
+parser.add_argument("-d", "--duration", default=5119, help="Image duration")
+parser.add_argument("-m", "--maxvol", default=100, help="Max Volume, 255 for identical results")
+parser.add_argument("-p", "--powerforimage", default=0.25, help="Power for Image")
+parser.add_argument("-n", "--nmels", default=512, help="n_mels to use for Image, basically width. Higher = more fidelity")
 args = parser.parse_args()
 
 # The filename is stored in the `filename` attribute of the `args` object
-filename = args.f
+filename = args.input
 image = Image.open(filename)
-wav_bytes, duration_s = wav_bytes_from_spectrogram_image(image, int(args.nmels))
-write_bytesio_to_file(args.o, wav_bytes)
+wav_bytes, duration_s = wav_bytes_from_spectrogram_image(image, duration=int(args.duration), nmels=int(args.nmels), maxvol=int(args.maxvol), power_for_image=float(args.powerforimage))
+write_bytesio_to_file(args.output, wav_bytes)
