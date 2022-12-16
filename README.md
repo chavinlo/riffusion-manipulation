@@ -13,7 +13,7 @@ The following arguments/flags are available on all convertors:
 
 `-p / --powerforimage [float]` : Amount of power to use. 0.25-0.30 recommended. Too low will create loud noise, too high will create silent static
 
-`-n / --nmels [integer]` : n_mels to use. Must match the ones on the image. Basically the width. 512 is the default used by the webUI, the higher it is the less compression is used and higher quality. Maximun is somewhere 1280.
+`-n / --nmels [integer]` : n_mels to use. Must match the ones on the image. Basically the HEIGHT. 512 is the default used by the webUI, the higher it is the less compression is used and higher quality. Maximun is somewhere 1280.
 
 ## Convert Audio to Image
 To convert an audio into an image use file2img.py:
