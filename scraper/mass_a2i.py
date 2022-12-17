@@ -1,5 +1,9 @@
-import io
+import os
+import shutil
+import pathlib
 
+import io
+from imohash import hashfile
 import numpy as np
 from PIL import Image
 import pydub
@@ -8,13 +12,7 @@ import torch
 import torchaudio
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--input", help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
-parser.add_argument("-o", "--output", help="Output Image")
-parser.add_argument("-m", "--maxvol", default=100, help="Max Volume, 255 for identical results")
-parser.add_argument("-p", "--powerforimage", default=0.25, help="Power for Image")
-parser.add_argument("-n", "--nmels", default=512, help="n_mels to use for Image, basically width. Higher = more fidelity")
-args = parser.parse_args()
+#we need to manipulate the funcs
 
 def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, power_for_image: float = 0.25, ms_duration: int = 5119) -> Image.Image:
     """
@@ -27,7 +25,7 @@ def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, po
     clip_duration_ms = ms_duration  # [ms]
 
     bins_per_image = 512
-    n_mels = int(args.nmels)
+    n_mels = int(512)
     mel_scale = True
 
     # FFT parameters
@@ -108,40 +106,66 @@ def image_from_spectrogram(
     data = data[::-1]
     image = Image.fromarray(data.astype(np.uint8))
     return image
+    
+PATH = "tests"
+OUTPATH = "spectogram_dataset"
+os.makedirs(OUTPATH, exist_ok=True)
+list_dir = os.listdir(PATH)
 
-def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_image: float = 0.25) -> Image.Image:
-    """
-    Generate a spectrogram image from an MP3 file.
-    """
+print("number of files in dir:", len(list_dir))
 
-    max_volume = int(args.maxvol)
-    power_for_image = float(args.powerforimage)
+for file in list_dir:
+    filename, ext = os.path.splitext(file)
+    print(filename)
+    if ext == ".wav":
+        txt_pair_exist = os.path.isfile(PATH + "/" + filename + ".txt")
+        if txt_pair_exist:
+            pass
+        else:
+            os.remove(PATH + "/" + file)
 
-    # Load MP3 file into AudioSegment object
-    audio = pydub.AudioSegment.from_file(filename)
+list_dir = os.listdir(PATH)
 
-    # Convert to mono and set frame rate
-    audio = audio.set_channels(1)
-    audio = audio.set_frame_rate(44100)
+max_volume = 100
+power_for_image = 0.25
 
-    length_in_ms = len(audio)
-    print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
-    # Extract first 5 seconds of audio data
-    audio = audio[:5119]
-    length_in_ms = len(audio)
-    print("CROPPED AUDIO LENGTH IN MS:", length_in_ms)
+for file in list_dir:
+    filename, ext = os.path.splitext(file)
+    if ext == ".wav":
+        #File is Audio
+        audio_hash = hashfile(PATH + "/" + file, hexdigest=True)
+        audio = pydub.AudioSegment.from_file(PATH + "/" + file)
 
-    # Convert to WAV and save as BytesIO object
-    wav_bytes = io.BytesIO()
-    audio.export("clip.wav", format="wav")
-    audio.export(wav_bytes, format="wav")
-    wav_bytes.seek(0)
+        # Convert to mono and set frame rate
+        audio = audio.set_channels(1)
+        audio = audio.set_frame_rate(44100)
 
-    # Generate spectrogram image from WAV file
-    return spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image, ms_duration=length_in_ms)
+        length_in_ms = len(audio)
+        print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
+        
+        #Calculate how many blocks can be generated
+        chunk_size = 5119
+        num_chunks, remaining_ms = divmod(length_in_ms, chunk_size)
 
-# The filename is stored in the `filename` attribute of the `args` object
-filename = args.input
-image = spectrogram_image_from_file(filename)
+        audio_chunks = []
 
-image.save(args.output)
+        for i in range(num_chunks):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size
+            chunk = audio[start:end]
+            audio_chunks.append(chunk)
+
+        no_chunks = len(audio_chunks)
+        print("GENERATED", no_chunks, "AUDIO CHUNKS, AND DROPPED", remaining_ms, "MS")
+
+        wav_bytes_chunks = []
+
+        for i, chunk in enumerate(audio_chunks):
+            wav_bytes = io.BytesIO()
+            chunk.export(wav_bytes, format="wav")
+            wav_bytes.seek(0)
+            wav_bytes_chunks.append(wav_bytes)
+            spec_image = spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image, ms_duration=chunk_size)
+            spec_image.save(OUTPATH + "/" + audio_hash + "_chunk_" + str(i) + ".png")
+            shutil.copy(PATH + "/" + filename + ".txt", OUTPATH + "/" + audio_hash + "_chunk_" + str(i) + ".txt")
+

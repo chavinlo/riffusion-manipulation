@@ -1,0 +1,6 @@
+scraper/videos
+scraper/tests
+scraper/spectogram_dataset
+clip.wav
+test.wav
+*vids.zip
