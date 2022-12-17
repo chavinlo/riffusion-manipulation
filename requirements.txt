@@ -1,0 +1,9 @@
+beautifulsoup4==4.11.1
+imohash==1.0.4
+numpy==1.21.5
+Pillow==9.3.0
+pydub==0.25.1
+requests==2.27.1
+scipy==1.7.3
+torch==1.13.0
+torchaudio==0.13.0
