@@ -7,6 +7,7 @@ from scipy.io import wavfile
 import torch
 import torchaudio
 import argparse
+from typing import List
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
@@ -109,14 +110,10 @@ def image_from_spectrogram(
     image = Image.fromarray(data.astype(np.uint8))
     return image
 
-def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_image: float = 0.25) -> Image.Image:
+def spectrogram_images_from_file(filename: str, max_volume: float = 50, power_for_image: float = 0.25) -> List[Image.Image]:
     """
-    Generate a spectrogram image from an MP3 file.
+    Generate a list of spectrogram images from an MP3 file.
     """
-
-    max_volume = int(args.maxvol)
-    power_for_image = float(args.powerforimage)
-
     # Load MP3 file into AudioSegment object
     audio = pydub.AudioSegment.from_file(filename)
 
@@ -124,24 +121,55 @@ def spectrogram_image_from_file(filename, max_volume: float = 50, power_for_imag
     audio = audio.set_channels(1)
     audio = audio.set_frame_rate(44100)
 
-    length_in_ms = len(audio)
-    print("ORIGINAL AUDIO LENGTH IN MS:", length_in_ms)
-    # Extract first 5 seconds of audio data
-    audio = audio[:5119]
-    length_in_ms = len(audio)
-    print("CROPPED AUDIO LENGTH IN MS:", length_in_ms)
+    # Calculate the number of 5 second intervals in the audio
+    interval_count = len(audio) // 5000
 
-    # Convert to WAV and save as BytesIO object
-    wav_bytes = io.BytesIO()
-    audio.export("clip.wav", format="wav")
-    audio.export(wav_bytes, format="wav")
-    wav_bytes.seek(0)
+    # Initialize list to store spectrogram images
+    spectrogram_images = []
 
-    # Generate spectrogram image from WAV file
-    return spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image, ms_duration=length_in_ms)
+    # Iterate over intervals and generate spectrogram images
+    for i in range(interval_count):
+        # Extract 5 second interval of audio data
+        interval_audio = audio[i*5000:(i+1)*5000]
+
+        # Convert to WAV and save as BytesIO object
+        wav_bytes = io.BytesIO()
+        interval_audio.export(wav_bytes, format="wav")
+        wav_bytes.seek(0)
+
+        # Generate spectrogram image from WAV file
+        spectrogram_image = spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image)
+
+        # Add image to list
+        spectrogram_images.append(spectrogram_image)
+
+    # Check if there are any leftover seconds that are not a multiple of 5
+    leftover_seconds = len(audio) % 5000
+    if leftover_seconds > 0:
+        # Extract the leftover interval of audio data
+        interval_audio = audio[-leftover_seconds:]
+
+        # Convert to WAV and save as BytesIO object
+        wav_bytes = io.BytesIO()
+        interval_audio.export(wav_bytes, format="wav")
+        wav_bytes.seek(0)
+
+        # Generate spectrogram image from WAV file
+        spectrogram_image = spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image)
+
+        # Add image to list
+        spectrogram_images.append(spectrogram_image)
+
+    return spectrogram_images
 
 # The filename is stored in the `filename` attribute of the `args` object
 filename = args.input
-image = spectrogram_image_from_file(filename)
 
-image.save(args.output)
+# Generate a list of spectrogram images from the MP3 file
+spectrogram_images = spectrogram_images_from_file(filename)
+
+# Iterate over the list of images and save each one to a separate file
+for i, image in enumerate(spectrogram_images):
+    # Generate output filename for this image
+    output_filename = f"{args.output}_{i}.png"
+    image.save(output_filename)
