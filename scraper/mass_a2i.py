@@ -106,8 +106,8 @@ def image_from_spectrogram(
     data = data[::-1]
     image = Image.fromarray(data.astype(np.uint8))
     return image
-    
-PATH = "tests"
+
+PATH = "videos"
 OUTPATH = "spectogram_dataset"
 os.makedirs(OUTPATH, exist_ok=True)
 list_dir = os.listdir(PATH)
@@ -129,7 +129,11 @@ list_dir = os.listdir(PATH)
 max_volume = 100
 power_for_image = 0.25
 
+no_processed_files = 0
+
 for file in list_dir:
+    no_processed_files += 1
+    print("PROCESSED ", no_processed_files, "/", len(list_dir))
     filename, ext = os.path.splitext(file)
     if ext == ".wav":
         #File is Audio

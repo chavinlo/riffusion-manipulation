@@ -8,16 +8,31 @@ import torch
 import torchaudio
 import argparse
 from typing import List
+import os
+from pathlib import Path
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--input", help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
-parser.add_argument("-o", "--output", help="Output Image")
-parser.add_argument("-m", "--maxvol", default=100, help="Max Volume, 255 for identical results")
-parser.add_argument("-p", "--powerforimage", default=0.25, help="Power for Image")
-parser.add_argument("-n", "--nmels", default=512, help="n_mels to use for Image, basically width. Higher = more fidelity")
+parser.add_argument("-i", "--input", type=str, help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
+parser.add_argument("-o", "--output", type=str, default="output", help="Output Folder")
+parser.add_argument("-m", "--maxvol", type=int, default=100, help="Max Volume, 255 for identical results")
+parser.add_argument("-p", "--powerforimage", type=float, default=0.25, help="Power for Image")
+parser.add_argument("-n", "--nmels", type=int, default=512, help="n_mels to use for Image, basically HEIGHT. Higher = more fidelity")
+parser.add_argument("-d", "--duration", type=int, default=5119, help="Duration of each chunk")
 args = parser.parse_args()
+# int and float checks
+args.input = str(args.input)
+args.output = str(args.output)
+args.maxvol = int(args.maxvol)
+args.powerforimage = float(args.powerforimage)
+args.nmels = int(args.nmels)
+args.duration = int(args.duration)
 
-def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, power_for_image: float = 0.25, ms_duration: int = 5119) -> Image.Image:
+def spectrogram_image_from_wav(
+    wav_bytes: io.BytesIO, 
+    max_volume: float = 50, 
+    power_for_image: float = 0.25, 
+    ms_duration: int = 5119,
+    nmels: int = 512) -> Image.Image:
     """
     Generate a spectrogram image from a WAV file.
     """
@@ -28,7 +43,7 @@ def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, po
     clip_duration_ms = ms_duration  # [ms]
 
     bins_per_image = 512
-    n_mels = int(args.nmels)
+    n_mels = nmels
     mel_scale = True
 
     # FFT parameters
@@ -54,7 +69,10 @@ def spectrogram_image_from_wav(wav_bytes: io.BytesIO, max_volume: float = 50, po
     )
 
     # Convert spectrogram to image
-    image = image_from_spectrogram(Sxx, max_volume=max_volume, power_for_image=power_for_image)
+    image = image_from_spectrogram(
+        Sxx, 
+        max_volume=max_volume, 
+        power_for_image=power_for_image)
 
     return image
 
@@ -110,7 +128,13 @@ def image_from_spectrogram(
     image = Image.fromarray(data.astype(np.uint8))
     return image
 
-def spectrogram_images_from_file(filename: str, max_volume: float = 50, power_for_image: float = 0.25) -> List[Image.Image]:
+def spectrogram_images_from_file(
+    filename: str, 
+    max_volume: float = 50, 
+    power_for_image: float = 0.25, 
+    nmels: int = 512, 
+    duration: int = 5119
+        ) -> List[Image.Image]:
     """
     Generate a list of spectrogram images from an MP3 file.
     """
@@ -122,15 +146,18 @@ def spectrogram_images_from_file(filename: str, max_volume: float = 50, power_fo
     audio = audio.set_frame_rate(44100)
 
     # Calculate the number of 5 second intervals in the audio
-    interval_count = len(audio) // 5000
+    interval_count = len(audio) // duration
+
+    print("CHUNKS TO PROCESS:", interval_count)
 
     # Initialize list to store spectrogram images
     spectrogram_images = []
 
     # Iterate over intervals and generate spectrogram images
     for i in range(interval_count):
+        print("PROCESSED:", i, "/", interval_count)
         # Extract 5 second interval of audio data
-        interval_audio = audio[i*5000:(i+1)*5000]
+        interval_audio = audio[i*duration:(i+1)*duration]
 
         # Convert to WAV and save as BytesIO object
         wav_bytes = io.BytesIO()
@@ -138,24 +165,45 @@ def spectrogram_images_from_file(filename: str, max_volume: float = 50, power_fo
         wav_bytes.seek(0)
 
         # Generate spectrogram image from WAV file
-        spectrogram_image = spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image)
+        spectrogram_image = spectrogram_image_from_wav(
+            wav_bytes, 
+            max_volume=max_volume, 
+            power_for_image=power_for_image,
+            ms_duration=duration,
+            nmels=nmels)
 
         # Add image to list
         spectrogram_images.append(spectrogram_image)
 
     # Check if there are any leftover seconds that are not a multiple of 5
-    leftover_seconds = len(audio) % 5000
+    leftover_seconds = len(audio) % duration
     if leftover_seconds > 0:
+        print("PROCESSING LEFTOVER CHUNK")
         # Extract the leftover interval of audio data
         interval_audio = audio[-leftover_seconds:]
 
+        # Calculate amount of silent audio to add and combine
+        add_ms = duration - leftover_seconds
+        print("ON THE LAST CHUNK,", add_ms,"ms WILL BE SILENT")
+        silence = pydub.AudioSegment.silent(
+            duration=add_ms,
+            frame_rate=44100
+            )
+
+        combined_segment = interval_audio + silence
+
         # Convert to WAV and save as BytesIO object
         wav_bytes = io.BytesIO()
-        interval_audio.export(wav_bytes, format="wav")
+        combined_segment.export(wav_bytes, format="wav")
         wav_bytes.seek(0)
 
         # Generate spectrogram image from WAV file
-        spectrogram_image = spectrogram_image_from_wav(wav_bytes, max_volume=max_volume, power_for_image=power_for_image)
+        spectrogram_image = spectrogram_image_from_wav(
+            wav_bytes, 
+            max_volume=max_volume, 
+            power_for_image=power_for_image,
+            ms_duration=duration,
+            nmels=nmels)
 
         # Add image to list
         spectrogram_images.append(spectrogram_image)
@@ -166,10 +214,21 @@ def spectrogram_images_from_file(filename: str, max_volume: float = 50, power_fo
 filename = args.input
 
 # Generate a list of spectrogram images from the MP3 file
-spectrogram_images = spectrogram_images_from_file(filename)
+spectrogram_images = spectrogram_images_from_file(
+    filename=filename,
+    max_volume=args.maxvol,
+    power_for_image=args.powerforimage,
+    nmels=args.nmels,
+    duration=args.duration
+    )
 
+os.makedirs(args.output, exist_ok=True)
+input_filename_only = Path(args.input).stem
 # Iterate over the list of images and save each one to a separate file
+print("SAVING SPECTOGRAM IMAGES")
 for i, image in enumerate(spectrogram_images):
     # Generate output filename for this image
-    output_filename = f"{args.output}_{i}.png"
+    output_filename = f"{args.output}/{input_filename_only}_{i}.png"
     image.save(output_filename)
+
+print("FINISHED")
