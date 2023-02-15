@@ -69,6 +69,4 @@ Experiments on variables are available at tests/
 Currently the only experiment available is one done with [Planet Girl from ALIEN POP](https://youtu.be/EzSC4PFnYLY?t=19) at 0:19, clip.wav being the original audio, and configurations used being available on the folder names.
 
 # Support
-If you need help with this tool, join the SAIL discord and go to the #riffuser channel: https://discord.gg/KfjghC3ppS
-
-You can also join the (unofficial) riffuser discord: https://discord.gg/HWdanyzvRt
+You can join the riffuser discord: https://discord.gg/HWdanyzvRt
