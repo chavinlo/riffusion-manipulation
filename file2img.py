@@ -228,7 +228,7 @@ input_filename_only = Path(args.input).stem
 print("SAVING SPECTOGRAM IMAGES")
 for i, image in enumerate(spectrogram_images):
     # Generate output filename for this image
-    output_filename = f"{args.output}/{input_filename_only}_{i}.png"
+    output_filename = f"{args.output}/{input_filename_only}_{i:05d}.png"
     image.save(output_filename)
 
 print("FINISHED")
