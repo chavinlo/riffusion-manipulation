@@ -125,6 +125,7 @@ def image_from_spectrogram(
     data = data / (max_volume / 255)
     data = 255 - data
     data = data[::-1]
+    data = cv2.normalize(data, None, 0, 255, cv2.NORM_MINMAX)
     image = Image.fromarray(data.astype(np.uint8))
     return image
 
