@@ -10,6 +10,7 @@ import argparse
 from typing import List
 import os
 from pathlib import Path
+import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
