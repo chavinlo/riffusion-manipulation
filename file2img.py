@@ -10,6 +10,7 @@ import argparse
 from typing import List
 import os
 from pathlib import Path
+import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, help="Input file to process, anything that FFMPEG supports, but wav and mp3 are recommended")
@@ -125,6 +126,7 @@ def image_from_spectrogram(
     data = data / (max_volume / 255)
     data = 255 - data
     data = data[::-1]
+    data = cv2.normalize(data, None, 0, 255, cv2.NORM_MINMAX)
     image = Image.fromarray(data.astype(np.uint8))
     return image
 
