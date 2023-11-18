@@ -50,6 +50,13 @@ Additionally, if the audio does not end in a multiple of the duration, it will g
 
 <img src="charmpoint_chunks/charmpoint_50.png" alt="Spectogram of Charm Point" width="512">
 
+To convert a folder of audio files into images use manyfiles2img.py:
+`python3 manyfiles2img.py -r audio_folder -o output_folder `
+
+For example, to conver a folder of audio files audio_dataset, use:
+`python3 manyfiles2img.py -r audio_dataset -o audio_spec`
+Where, audio_spec, will be the output fodler in which all the spectrograms would be saved.
+
 ## Verify / Convert Image to Audio
 It is highly recommended to verify that the audio has been correctly converted. You can do soo by using img2audio.py:
 

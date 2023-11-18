@@ -83,7 +83,7 @@ def waveform_from_spectrogram(
 
     return waveform
 
-def wav_bytes_from_spectrogram_image(image: Image.Image, duration: int, nmels: int, maxvol: int, power_for_image: float) -> T.Tuple[io.BytesIO, float]:
+def wav_bytes_from_spectrogram_image(image: Image.Image, duration: int, nmels: int, maxvol: int, power_for_image: float, device: str ="cuda:0") -> T.Tuple[io.BytesIO, float]:
     """
     Reconstruct a WAV audio clip from a spectrogram image. Also returns the duration in seconds.
     """
@@ -120,6 +120,7 @@ def wav_bytes_from_spectrogram_image(image: Image.Image, duration: int, nmels: i
         n_mels=n_mels,
         max_mel_iters=200,
         num_griffin_lim_iters=32,
+        device=device,
     )
 
     wav_bytes = io.BytesIO()
@@ -152,5 +153,5 @@ args = parser.parse_args()
 # The filename is stored in the `filename` attribute of the `args` object
 filename = args.input
 image = Image.open(filename)
-wav_bytes, duration_s = wav_bytes_from_spectrogram_image(image, duration=int(args.duration), nmels=int(args.nmels), maxvol=int(args.maxvol), power_for_image=float(args.powerforimage))
+wav_bytes, duration_s = wav_bytes_from_spectrogram_image(image, duration=int(args.duration), nmels=int(args.nmels), maxvol=int(args.maxvol), power_for_image=float(args.powerforimage), device="cpu")
 write_bytesio_to_file(args.output, wav_bytes)
